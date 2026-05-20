@@ -73,10 +73,9 @@
     <p class="info">基準周波数: A = 442 Hz</p>
     
     <div class="setting-group">
-      <p>音色（波形）を選択</p>
-      <label><input type="radio" name="waveform" value="sawtooth" data-name="ノコギリ波 (管楽器風)" checked> ノコギリ波 (管楽器風)</label><br>
-      <label><input type="radio" name="waveform" value="triangle" data-name="三角波 (まろやか)"> 三角波 (まろやか)</label><br>
-      <label><input type="radio" name="waveform" value="sine" data-name="サイン波 (純音/激ムズ)"> サイン波 (純音/激ムズ)</label>
+      <p>音色を選択</p>
+      <label><input type="radio" name="waveform" value="brass" data-name="金管楽器風 (Brass)" checked> 🎺 金管楽器風 (トロンボーン/トランペット等)</label><br>
+      <label><input type="radio" name="waveform" value="woodwind" data-name="木管楽器風 (Woodwind)"> 🎷 木管楽器風 (クラリネット/オーボエ等)</label>
     </div>
 
     <div class="setting-group">
@@ -179,12 +178,11 @@
   const fbDetailText = document.getElementById('feedback-detail-text');
   const btnCorrectAfter = document.getElementById('btn-play-correct-after');
 
-  // 音を鳴らす関数
+  // 音を鳴らす関数（金管・木管シミュレーター搭載版）
   function playTone(midiNote, cents = 0) {
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     
-    // ★前に鳴っている音があれば強制終了させる
     if (activeOscillator) {
       activeOscillator.stop();
       activeOscillator.disconnect();
@@ -197,26 +195,53 @@
     const gainNode = audioCtx.createGain();
     const filter = audioCtx.createBiquadFilter();
 
-    osc.type = selectedWaveform; // 選択された音色を適用
-    osc.frequency.value = finalFreq;
-
-    // サイン波以外はフィルターをかけて管楽器っぽくする
-    if (selectedWaveform !== 'sine') {
-      filter.type = 'lowpass';
-      filter.frequency.value = 1500;
-    } else {
-      filter.type = 'allpass'; // サイン波はそのまま通す
-    }
-    
     const duration = 3.5;
     const t = audioCtx.currentTime;
 
-    gainNode.gain.setValueAtTime(0, t);
-    gainNode.gain.linearRampToValueAtTime(0.2, t + 0.05); 
-    gainNode.gain.exponentialRampToValueAtTime(0.15, t + 0.2); 
-    gainNode.gain.linearRampToValueAtTime(0.15, t + duration - 0.5); 
-    gainNode.gain.linearRampToValueAtTime(0, t + duration); 
+    // --- 音色（シンセサイズ）の分岐処理 ---
+    if (selectedWaveform === 'brass') {
+      // 🎺 金管楽器風（トロンボーン・トランペットなど）
+      osc.type = 'sawtooth'; // 倍音豊かなノコギリ波
+      filter.type = 'lowpass';
+      
+      // 金管特有の「息を入れてから音が開く」表現（フィルターエンベロープ）
+      filter.frequency.setValueAtTime(600, t); // 最初はこもった音
+      filter.frequency.linearRampToValueAtTime(3000, t + 0.1); // 0.1秒で明るく弾ける
+      filter.frequency.exponentialRampToValueAtTime(800, t + duration); // 減衰と共に落ち着く
 
+      // 金管の息づかい（ボリュームエンベロープ）
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(0.3, t + 0.08); // アタック少し重め
+      gainNode.gain.exponentialRampToValueAtTime(0.2, t + 0.3); // 落ち着く
+      gainNode.gain.linearRampToValueAtTime(0.15, t + duration - 0.5); // ロングトーン
+      gainNode.gain.linearRampToValueAtTime(0, t + duration); // リリース
+
+    } else if (selectedWaveform === 'woodwind') {
+      // 🎷 木管楽器風（クラリネット寄り）
+      osc.type = 'square'; // 中空な響きの矩形波
+      filter.type = 'lowpass';
+      
+      // 高音をバッサリ切って丸く温かい音にする
+      filter.frequency.value = 800; 
+
+      // 木管の息づかい（ボリュームエンベロープ）
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(0.2, t + 0.05); // アタック早め・軽め
+      gainNode.gain.exponentialRampToValueAtTime(0.15, t + 0.2);
+      gainNode.gain.linearRampToValueAtTime(0.15, t + duration - 0.5);
+      gainNode.gain.linearRampToValueAtTime(0, t + duration);
+
+    } else {
+      // 💧 サイン波（純音）
+      osc.type = 'sine';
+      filter.type = 'allpass'; // フィルターを通さない
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(0.2, t + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0.15, t + duration - 0.5);
+      gainNode.gain.linearRampToValueAtTime(0, t + duration);
+    }
+
+    // 接続して出力
     osc.connect(filter);
     filter.connect(gainNode);
     gainNode.connect(audioCtx.destination);
@@ -224,7 +249,6 @@
     osc.start(t);
     osc.stop(t + duration);
     
-    // ★鳴らし始めたオシレーターを変数に記憶しておく
     activeOscillator = osc;
   }
 

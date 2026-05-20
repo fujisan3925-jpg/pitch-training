@@ -72,7 +72,7 @@
 <div id="app">
   <div id="start-screen">
     <h1>ピッチ感トレーニング</h1>
-    <p class="version">v1.0.0</p>
+    <p class="version">v1.0.1</p>
     <p class="info">基準周波数: A = 442 Hz</p>
     
     <div class="setting-group">
@@ -400,13 +400,17 @@
 
     if (currentLevel === 1 || currentLevel === 2) {
       resultText.textContent = `${correctCount} / ${MAX_QUESTIONS} 問 正解！`;
-      if (correctCount >= 8) feedbackText.textContent = "素晴らしい音感です！";
-      else feedbackText.textContent = "この調子でトレーニングを続けましょう！";
+      if (correctCount >= 10) feedbackText.textContent = "やばいばい！";
+      else if (correctCount >= 8) feedbackText.textContent = "すばらしい音感！";
+      else if (correctCount >= 6) feedbackText.textContent = "そこそこの音感！";
+      else feedbackText.textContent = "しゃばいばい！";
     } else {
       resultText.textContent = `合計スコア: ${totalScore} / 1000 点`;
-      if (totalScore >= 800) feedbackText.textContent = "驚異的なピッチ感です！";
-      else if (totalScore >= 500) feedbackText.textContent = "なかなか良い耳を持っていますね！";
-      else feedbackText.textContent = "日々のチューニング感覚を研ぎ澄ませていきましょう！";
+      if (totalScore >= 950) feedbackText.textContent = "やばいばい！";
+      else if (totalScore >= 900) feedbackText.textContent = "すばらしい音感！";
+      else if (totalScore >= 800) feedbackText.textContent = "いい感じの音感！";
+      else if (totalScore >= 700) feedbackText.textContent = "そこそこの音感！";
+      else feedbackText.textContent = "しゃばいばい！";
     }
     
     resultWaveformText.textContent = `プレイ環境: Lv${currentLevel} / 使用音色: ${selectedWaveformName}`;

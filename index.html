@@ -74,8 +74,8 @@
     
     <div class="setting-group">
       <p>音色を選択</p>
-      <label><input type="radio" name="waveform" value="brass" data-name="金管楽器風 (Brass)" checked> 🎺 金管楽器風 (トロンボーン/トランペット等)</label><br>
-      <label><input type="radio" name="waveform" value="woodwind" data-name="木管楽器風 (Woodwind)"> 🎷 木管楽器風 (クラリネット/オーボエ等)</label>
+      <label><input type="radio" name="waveform" value="brass" data-name="金管楽器風 (Brass)" checked> 🎺 金管楽器風</label><br>
+      <label><input type="radio" name="waveform" value="woodwind" data-name="木管楽器風 (Woodwind)"> 🎷 木管楽器風</label>
     </div>
 
     <div class="setting-group">
@@ -349,10 +349,10 @@
     
     if (isCorrect) {
       correctCount++;
-      fbResultText.textContent = "正解！ ?";
+      fbResultText.textContent = "正解！";
       fbResultText.className = "feedback-text correct-msg";
     } else {
-      fbResultText.textContent = "残念... ?";
+      fbResultText.textContent = "残念...";
       fbResultText.className = "feedback-text wrong-msg";
     }
     
@@ -422,13 +422,18 @@
 
     if (currentLevel === 1 || currentLevel === 2) {
       resultText.textContent = `${correctCount} / ${MAX_QUESTIONS} 問 正解！`;
-      if (correctCount >= 8) feedbackText.textContent = "素晴らしい音感です！";
-      else feedbackText.textContent = "この調子でトレーニングを続けましょう！";
+      if (correctCount >= 10) feedbackText.textContent = "やばいばい！";
+      else if (correctCount >= 8) feedbackText.textContent = "すばらしい音感です！";
+    　else if (correctCount >= 6) feedbackText.textContent = "いい音感です！";
+      else feedbackText.textContent = "しゃばいばい！";
     } else {
       resultText.textContent = `合計スコア: ${totalScore} / 1000 点`;
-      if (totalScore >= 800) feedbackText.textContent = "驚異的なピッチ感です！";
-      else if (totalScore >= 500) feedbackText.textContent = "なかなか良い耳を持っていますね！";
-      else feedbackText.textContent = "日々のチューニング感覚を研ぎ澄ませていきましょう！";
+      if (totalScore >= 950) feedbackText.textContent = "やばいばい！";
+      else if (totalScore >= 900) feedbackText.textContent = "えぐいピッチ感です！";
+      else if (totalScore >= 800) feedbackText.textContent = "すばらしいピッチ感です！";
+      else if (totalScore >= 700) feedbackText.textContent = "いいピッチ感です！";
+      else if (totalScore >= 500) feedbackText.textContent = "そこそこのピッチ感です！";
+      else feedbackText.textContent = "しゃばいばい！";
     }
     
     resultWaveformText.textContent = `プレイ環境: Lv${currentLevel} / 使用音色: ${selectedWaveformName}`;

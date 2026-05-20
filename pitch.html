@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音感トレーニングアプリ</title>
+<style>
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    text-align: center;
+    padding: 20px;
+  }
+  #app {
+    max-width: 500px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  h1 { font-size: 24px; color: #2c3e50; }
+  h2 { font-size: 20px; color: #34495e; }
+  .info { font-size: 14px; color: #7f8c8d; margin-bottom: 20px; }
+  
+  .setting-group { text-align: left; background: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+  .setting-group p { margin-top: 0; font-weight: bold; }
+
+  button {
+    background-color: #3498db;
+    color: #fff;
+    border: none;
+    padding: 12px 10px;
+    margin: 5px;
+    font-size: 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  button:hover { background-color: #2980b9; }
+  button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+  .btn-play { background-color: #2ecc71; padding: 12px 20px; margin: 10px; }
+  .btn-play:hover { background-color: #27ae60; }
+  .btn-next { background-color: #f39c12; padding: 12px 30px; margin-top: 20px; font-weight: bold; font-size: 18px;}
+  .btn-next:hover { background-color: #e67e22; }
+  
+  .btn-high { background-color: #e74c3c; width: 30%; }
+  .btn-high:hover { background-color: #c0392b; }
+  .btn-perfect { background-color: #f1c40f; width: 30%; color: #333; font-weight: bold; }
+  .btn-perfect:hover { background-color: #f39c12; }
+  .btn-low { background-color: #9b59b6; width: 30%; }
+  .btn-low:hover { background-color: #8e44ad; }
+  
+  #slider-container { margin: 30px 0; }
+  input[type="range"] { width: 80%; }
+  #cent-value { font-weight: bold; font-size: 20px; color: #e67e22; }
+  
+  .note-display { font-size: 48px; font-weight: bold; margin: 20px 0; color: #2c3e50; }
+  .feedback-text { font-size: 20px; font-weight: bold; margin: 15px 0; }
+  .correct-msg { color: #27ae60; }
+  .wrong-msg { color: #c0392b; }
+  
+  .hidden { display: none !important; }
+  .score-display { font-size: 24px; font-weight: bold; color: #e74c3c; margin-top: 20px;}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="start-screen">
+    <h1>ピッチ感トレーニング</h1>
+    <p class="info">基準周波数: A = 442 Hz</p>
+    
+    <div class="setting-group">
+      <p>音色（波形）を選択</p>
+      <label><input type="radio" name="waveform" value="sawtooth" data-name="ノコギリ波 (管楽器風)" checked> ノコギリ波 (管楽器風)</label><br>
+      <label><input type="radio" name="waveform" value="triangle" data-name="三角波 (まろやか)"> 三角波 (まろやか)</label><br>
+      <label><input type="radio" name="waveform" value="sine" data-name="サイン波 (純音/激ムズ)"> サイン波 (純音/激ムズ)</label>
+    </div>
+
+    <div class="setting-group">
+      <p>レベルを選択</p>
+      <label><input type="radio" name="level" value="1" checked> Lv1: 正しい音を聴いて「高い/ピッタリ/低い」を答える</label><br>
+      <label><input type="radio" name="level" value="2"> Lv2: 問題の音だけ聴いて「高い/ピッタリ/低い」を答える</label><br>
+      <label><input type="radio" name="level" value="3"> Lv3: 何セントズレているかを当てる (スコア形式)</label>
+    </div>
+    
+    <button id="btn-start" style="padding: 12px 30px; font-size: 18px; margin-top: 10px;">ゲームスタート</button>
+  </div>
+
+  <div id="game-screen" class="hidden">
+    <h2>第 <span id="question-number">1</span> / 10 問</h2>
+    <div class="note-display" id="target-note-name">B♭3</div>
+    
+    <div>
+      <button id="btn-play-correct" class="btn-play">正しいピッチを聴く</button>
+      <button id="btn-play-question" class="btn-play">問題の音を聴く</button>
+    </div>
+
+    <div id="question-input-area">
+      <div id="answer-high-low" class="hidden" style="margin-top: 20px;">
+        <button class="btn-high" onclick="answerHighLow('high')">高い (シャープ)</button>
+        <button class="btn-perfect" onclick="answerHighLow('perfect')">ピッタリ (ズレなし)</button>
+        <button class="btn-low" onclick="answerHighLow('low')">低い (フラット)</button>
+      </div>
+
+      <div id="answer-slider" class="hidden">
+        <p>正しい音から何セントずれている？</p>
+        <div id="slider-container">
+          <span style="float:left;">-50</span>
+          <span style="float:right;">+50</span>
+          <input type="range" id="cent-slider" min="-50" max="50" value="0" step="1">
+        </div>
+        <p>あなたの回答: <span id="cent-value">0</span> Cent</p>
+        <button onclick="answerSlider()" style="padding: 12px 30px;">決定</button>
+      </div>
+    </div>
+
+    <div id="feedback-area" class="hidden" style="margin-top: 20px; padding-top: 20px; border-top: 2px dashed #bdc3c7;">
+      <div id="feedback-result-text" class="feedback-text"></div>
+      <p id="feedback-detail-text" style="font-size: 18px;"></p>
+      
+      <button id="btn-play-correct-after" class="btn-play hidden">正解のピッチを聴き直す</button>
+      <br>
+      <button class="btn-next" onclick="nextQuestion()">次の問題へ</button>
+    </div>
+  </div>
+
+  <div id="result-screen" class="hidden">
+    <h1>ゲーム終了！</h1>
+    <div id="final-result-text" class="score-display"></div>
+    <p id="feedback-text"></p>
+    <p class="info" id="result-waveform-text"></p>
+    <button onclick="resetGame()" style="padding: 12px 30px; margin-top: 20px;">タイトルに戻る</button>
+  </div>
+</div>
+
+<script>
+  let audioCtx;
+  const BASE_A = 442;
+  const MAX_QUESTIONS = 10;
+  
+  const bbScalePc = [0, 2, 3, 5, 7, 9, 10];
+  const noteNames = ["C", "C#", "D", "E♭", "E", "F", "F#", "G", "G#", "A", "B♭", "B"];
+
+  let currentLevel = 1;
+  let currentQuestion = 1;
+  let totalScore = 0; 
+  let correctCount = 0; 
+  let currentMidiNote = 60;
+  let currentDeviationCents = 0;
+  
+  // 音色設定用
+  let selectedWaveform = 'sawtooth';
+  let selectedWaveformName = '';
+
+  // ★音が重ならないようにするための変数
+  let activeOscillator = null;
+
+  const startScreen = document.getElementById('start-screen');
+  const gameScreen = document.getElementById('game-screen');
+  const resultScreen = document.getElementById('result-screen');
+  
+  const qNumText = document.getElementById('question-number');
+  const noteNameText = document.getElementById('target-note-name');
+  
+  const btnCorrect = document.getElementById('btn-play-correct');
+  const btnQuestion = document.getElementById('btn-play-question');
+  
+  const inputArea = document.getElementById('question-input-area');
+  const uiHighLow = document.getElementById('answer-high-low');
+  const uiSlider = document.getElementById('answer-slider');
+  const centSlider = document.getElementById('cent-slider');
+  const centValue = document.getElementById('cent-value');
+
+  const feedbackArea = document.getElementById('feedback-area');
+  const fbResultText = document.getElementById('feedback-result-text');
+  const fbDetailText = document.getElementById('feedback-detail-text');
+  const btnCorrectAfter = document.getElementById('btn-play-correct-after');
+
+  // 音を鳴らす関数
+  function playTone(midiNote, cents = 0) {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    // ★前に鳴っている音があれば強制終了させる
+    if (activeOscillator) {
+      activeOscillator.stop();
+      activeOscillator.disconnect();
+    }
+    
+    const freq = BASE_A * Math.pow(2, (midiNote - 69) / 12);
+    const finalFreq = freq * Math.pow(2, cents / 1200);
+
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+
+    osc.type = selectedWaveform; // 選択された音色を適用
+    osc.frequency.value = finalFreq;
+
+    // サイン波以外はフィルターをかけて管楽器っぽくする
+    if (selectedWaveform !== 'sine') {
+      filter.type = 'lowpass';
+      filter.frequency.value = 1500;
+    } else {
+      filter.type = 'allpass'; // サイン波はそのまま通す
+    }
+    
+    const duration = 3.5;
+    const t = audioCtx.currentTime;
+
+    gainNode.gain.setValueAtTime(0, t);
+    gainNode.gain.linearRampToValueAtTime(0.2, t + 0.05); 
+    gainNode.gain.exponentialRampToValueAtTime(0.15, t + 0.2); 
+    gainNode.gain.linearRampToValueAtTime(0.15, t + duration - 0.5); 
+    gainNode.gain.linearRampToValueAtTime(0, t + duration); 
+
+    osc.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    osc.start(t);
+    osc.stop(t + duration);
+    
+    // ★鳴らし始めたオシレーターを変数に記憶しておく
+    activeOscillator = osc;
+  }
+
+  function getNoteName(midiNote) {
+    const pc = midiNote % 12;
+    const octave = Math.floor(midiNote / 12) - 1;
+    return noteNames[pc] + octave;
+  }
+
+  function generateQuestion() {
+    // 画面の初期化
+    inputArea.classList.remove('hidden');
+    feedbackArea.classList.add('hidden');
+    btnCorrect.classList.remove('hidden'); // 一旦両方のボタンを表示
+    btnQuestion.classList.remove('hidden');
+
+    let note;
+    if (Math.random() < 0.8) {
+      do { note = Math.floor(Math.random() * (77 - 41 + 1)) + 41; } while (!bbScalePc.includes(note % 12));
+    } else {
+      note = Math.floor(Math.random() * (77 - 41 + 1)) + 41;
+    }
+    currentMidiNote = note;
+
+    const r = Math.random();
+    if (r < 0.15) {
+      currentDeviationCents = 0;
+    } else {
+      let cents = Math.floor(Math.random() * 46) + 5; 
+      if (Math.random() < 0.5) cents *= -1;
+      currentDeviationCents = cents;
+    }
+
+    qNumText.textContent = currentQuestion;
+    noteNameText.textContent = getNoteName(currentMidiNote);
+    centSlider.value = 0;
+    centValue.textContent = "0";
+
+    if (currentLevel === 1) {
+      uiHighLow.classList.remove('hidden');
+      uiSlider.classList.add('hidden');
+    } else if (currentLevel === 2) {
+      btnCorrect.classList.add('hidden'); // Lv2は最初「正しい音」を隠す
+      uiHighLow.classList.remove('hidden');
+      uiSlider.classList.add('hidden');
+    } else if (currentLevel === 3) {
+      uiHighLow.classList.add('hidden');
+      uiSlider.classList.remove('hidden');
+    }
+  }
+
+  // --- イベントリスナー ---
+
+  document.getElementById('btn-start').addEventListener('click', () => {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    // 音色とレベルの取得
+    const waveRadios = document.getElementsByName('waveform');
+    for (let r of waveRadios) {
+      if (r.checked) {
+        selectedWaveform = r.value;
+        selectedWaveformName = r.getAttribute('data-name');
+      }
+    }
+
+    const levelRadios = document.getElementsByName('level');
+    for (let r of levelRadios) {
+      if (r.checked) currentLevel = parseInt(r.value);
+    }
+
+    startScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    
+    currentQuestion = 1;
+    totalScore = 0;
+    correctCount = 0;
+    generateQuestion();
+  });
+
+  btnCorrect.addEventListener('click', () => playTone(currentMidiNote, 0));
+  btnQuestion.addEventListener('click', () => playTone(currentMidiNote, currentDeviationCents));
+  btnCorrectAfter.addEventListener('click', () => playTone(currentMidiNote, 0));
+
+  centSlider.addEventListener('input', (e) => {
+    centValue.textContent = e.target.value > 0 ? "+" + e.target.value : e.target.value;
+  });
+
+  // --- 解答処理 (アラート廃止・インページ表示化) ---
+
+  window.answerHighLow = function(answer) {
+    let isCorrect = false;
+    
+    if (answer === 'high' && currentDeviationCents > 0) isCorrect = true;
+    else if (answer === 'low' && currentDeviationCents < 0) isCorrect = true;
+    else if (answer === 'perfect' && currentDeviationCents === 0) isCorrect = true;
+    
+    if (isCorrect) {
+      correctCount++;
+      fbResultText.textContent = "正解！ ?";
+      fbResultText.className = "feedback-text correct-msg";
+    } else {
+      fbResultText.textContent = "残念... ?";
+      fbResultText.className = "feedback-text wrong-msg";
+    }
+    
+    const correctStr = currentDeviationCents > 0 ? "+" + currentDeviationCents : currentDeviationCents;
+    fbDetailText.textContent = `実際のズレ: ${correctStr} Cent`;
+    showFeedback();
+  };
+
+  window.answerSlider = function() {
+    const userCents = parseInt(centSlider.value);
+    const error = Math.abs(currentDeviationCents - userCents);
+    let questionScore = Math.max(0, 100 - (error * 2));
+    totalScore += questionScore;
+
+    fbResultText.textContent = `獲得スコア: ${questionScore} 点`;
+    fbResultText.className = "feedback-text correct-msg";
+    
+    const correctStr = currentDeviationCents > 0 ? "+" + currentDeviationCents : currentDeviationCents;
+    fbDetailText.textContent = `正解: ${correctStr} Cent (誤差: ${error} Cent)`;
+    showFeedback();
+  };
+
+  function showFeedback() {
+    // 解答ボタンを隠して、フィードバックエリアを表示
+    inputArea.classList.add('hidden');
+    feedbackArea.classList.remove('hidden');
+    
+    // 現在鳴っている音を止める（スッキリさせるため）
+    if (activeOscillator) {
+      activeOscillator.stop();
+      activeOscillator.disconnect();
+      activeOscillator = null;
+    }
+
+    // Lv2の場合は「正解の音を聴き直す」ボタンを表示する
+    if (currentLevel === 2) {
+      btnCorrectAfter.classList.remove('hidden');
+    } else {
+      btnCorrectAfter.classList.add('hidden');
+    }
+  }
+
+  // 「次の問題へ」ボタンが押された時
+  window.nextQuestion = function() {
+    // 音を止める
+    if (activeOscillator) {
+      activeOscillator.stop();
+      activeOscillator.disconnect();
+      activeOscillator = null;
+    }
+
+    currentQuestion++;
+    if (currentQuestion > MAX_QUESTIONS) {
+      showResult();
+    } else {
+      generateQuestion();
+    }
+  };
+
+  function showResult() {
+    gameScreen.classList.add('hidden');
+    resultScreen.classList.remove('hidden');
+
+    const resultText = document.getElementById('final-result-text');
+    const feedbackText = document.getElementById('feedback-text');
+    const resultWaveformText = document.getElementById('result-waveform-text');
+
+    if (currentLevel === 1 || currentLevel === 2) {
+      resultText.textContent = `${correctCount} / ${MAX_QUESTIONS} 問 正解！`;
+      if (correctCount >= 8) feedbackText.textContent = "素晴らしい音感です！";
+      else feedbackText.textContent = "この調子でトレーニングを続けましょう！";
+    } else {
+      resultText.textContent = `合計スコア: ${totalScore} / 1000 点`;
+      if (totalScore >= 800) feedbackText.textContent = "驚異的なピッチ感です！";
+      else if (totalScore >= 500) feedbackText.textContent = "なかなか良い耳を持っていますね！";
+      else feedbackText.textContent = "日々のチューニング感覚を研ぎ澄ませていきましょう！";
+    }
+    
+    resultWaveformText.textContent = `プレイ環境: Lv${currentLevel} / 使用音色: ${selectedWaveformName}`;
+  }
+
+  window.resetGame = function() {
+    resultScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+  };
+</script>
+</body>
+</html>

@@ -20,8 +20,10 @@
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   }
-  h1 { font-size: 24px; color: #2c3e50; }
-  h2 { font-size: 20px; color: #34495e; }
+  h1 { font-size: 24px; color: #2c3e50; margin-bottom: 5px; }
+  /* ★追加：バージョンテキストのデザイン */
+  .version { font-size: 13px; color: #95a5a6; margin-top: 0; margin-bottom: 20px; font-weight: bold; letter-spacing: 1px; }
+  
   .info { font-size: 14px; color: #7f8c8d; margin-bottom: 20px; }
   
   .setting-group { text-align: left; background: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
@@ -70,6 +72,7 @@
 <div id="app">
   <div id="start-screen">
     <h1>ピッチ感トレーニング</h1>
+    <p class="version">v1.0.0</p>
     <p class="info">基準周波数: A = 442 Hz</p>
     
     <div class="setting-group">
@@ -136,7 +139,7 @@
 </div>
 
 <script>
-let audioCtx;
+  let audioCtx;
   const BASE_A = 442;
   const MAX_QUESTIONS = 10;
   
@@ -154,6 +157,7 @@ let audioCtx;
   let selectedWaveformName = '';
 
   let activeOscillator = null;
+  let activeGainNode = null;
 
   const startScreen = document.getElementById('start-screen');
   const gameScreen = document.getElementById('game-screen');
@@ -176,17 +180,17 @@ let audioCtx;
   const fbDetailText = document.getElementById('feedback-detail-text');
   const btnCorrectAfter = document.getElementById('btn-play-correct-after');
 
-  // ★追加：安全に音を止める専用の関数
   function stopActiveOscillator() {
-    if (activeOscillator) {
+    if (activeOscillator && activeGainNode) {
       try {
-        // すでに鳴り終わっている音をstopするとエラーが出るため、try-catchで保護する
-        activeOscillator.stop();
-      } catch (e) {
-        // エラーが出ても無視して処理を続ける
-      }
-      activeOscillator.disconnect();
+        const t = audioCtx.currentTime;
+        activeGainNode.gain.cancelScheduledValues(t);
+        activeGainNode.gain.setValueAtTime(activeGainNode.gain.value, t);
+        activeGainNode.gain.linearRampToValueAtTime(0, t + 0.05);
+        activeOscillator.stop(t + 0.05);
+      } catch (e) {}
       activeOscillator = null;
+      activeGainNode = null;
     }
   }
 
@@ -194,7 +198,6 @@ let audioCtx;
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     
-    // 前の音を安全に止める
     stopActiveOscillator();
     
     const freq = BASE_A * Math.pow(2, (midiNote - 69) / 12);
@@ -244,6 +247,7 @@ let audioCtx;
     osc.stop(t + duration);
     
     activeOscillator = osc;
+    activeGainNode = gainNode;
   }
 
   function getNoteName(midiNote) {
@@ -366,7 +370,6 @@ let audioCtx;
     inputArea.classList.add('hidden');
     feedbackArea.classList.remove('hidden');
     
-    // 安全に音を止める
     stopActiveOscillator();
 
     if (currentLevel === 2) {
@@ -377,7 +380,6 @@ let audioCtx;
   }
 
   window.nextQuestion = function() {
-    // 安全に音を止める
     stopActiveOscillator();
 
     currentQuestion++;
